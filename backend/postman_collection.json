@@ -1,0 +1,73 @@
+{
+  "info": {
+    "name": "QR Zimmet Otomasyonu - Yusuf Modulleri",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Yusuf\",\n  \"email\": \"yusuf@test.com\",\n  \"password\": \"123456\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Login (token doner)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"yusuf@test.com\",\n  \"password\": \"123456\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Token olmadan asset listele (401 beklenir)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/assets"
+      }
+    },
+    {
+      "name": "4. Token ile asset listele",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/assets"
+      }
+    },
+    {
+      "name": "5. PERSONEL rolüyle asset oluştur (403 beklenir)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/assets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Lenovo Laptop\",\n  \"categoryId\": 1\n}"
+        }
+      }
+    },
+    {
+      "name": "6. QR okutma - asset bilgisi getir",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/assets/qr/BURAYA_UUID_YAZ"
+      }
+    }
+  ]
+}
