@@ -7,3 +7,10 @@ dist/
 .idea/
 .vscode/
 *.log
+
+# Excel çıktıları (raporlama scriptleri ile üretilir)
+*.xlsx
+~$*
+
+# Geçici dosyalar
+docx_content.txt
