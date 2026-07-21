@@ -1,6 +1,7 @@
+// @ts-ignore
+import { QrCode, ScanBarcode } from "lucide-react";
 import { useEffect, useState, type FormEvent, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { QrCode, ScanBarcode } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ScannerControls } from "../components/qr/ScannerControls";
@@ -24,8 +25,16 @@ export function QRScanner() {
     scannedUuidRef.current = scannedUuid;
   }, [scannedUuid]);
 
-  const onDecoded = async (value: string) => {
-    await html5QrCode.stop();
+  // Decoded işlemi
+  const processDecoded = async (value: string) => {
+    try {
+      if (html5QrCode && typeof html5QrCode.stop === 'function') {
+        await html5QrCode.stop();
+      }
+    } catch (e) {
+      // stop hatası oluşursa yut
+    }
+
     await handleDecoded(value, () => {
       setTimeout(() => {
         if (scannedUuidRef.current) {
@@ -37,16 +46,19 @@ export function QRScanner() {
 
   const html5QrCode = useHtml5Qrcode({
     onStatusChange: setStatus,
-    onDecoded,
-    onError: (message) => {
+    onDecoded: (val: string) => { processDecoded(val); },
+    onError: (message: string) => {
       showToast("error", message);
     },
   });
-useEffect(() => {
-  return () => {
-    html5QrCode.stop().catch(() => {});
-  };
-}, [html5QrCode.stop]);
+
+  useEffect(() => {
+    return () => {
+      if (html5QrCode && typeof html5QrCode.stop === 'function') {
+        html5QrCode.stop().catch(() => {});
+      }
+    };
+  }, []);
 
   async function handleStart() {
     resetScan();
@@ -71,7 +83,7 @@ useEffect(() => {
   function handleManualSubmit(e: FormEvent) {
     e.preventDefault();
     if (!manualUuid.trim()) return;
-    onDecoded(manualUuid);
+    processDecoded(manualUuid);
   }
 
   const cameraActive = status === ScannerState.SCANNING || status === ScannerState.CAMERA_ACTIVE || status === ScannerState.CAMERA_LOADING;
@@ -81,6 +93,7 @@ useEffect(() => {
     status === ScannerState.NO_CAMERA ||
     status === ScannerState.PERMISSION_DENIED ||
     status === ScannerState.NOT_SUPPORTED;
+
   const cameraBorderClass = isSuccess
     ? "border-ok/30 scanner-glow-success"
     : isError
@@ -136,7 +149,7 @@ useEffect(() => {
           <div className="mt-6 space-y-5">
             <ScannerControls
               status={status}
-              cameraCount={html5QrCode.cameras.length}
+              cameraCount={html5QrCode?.cameras?.length || 0}
               onStart={handleStart}
               onStop={handleStop}
               onRestart={handleRestart}
@@ -169,6 +182,7 @@ useEffect(() => {
         </div>
       </div>
     </div>
-
   );
-}export default QRScanner;
+}
+
+export default QRScanner;

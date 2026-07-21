@@ -1,35 +1,33 @@
 import axios from 'axios';
-
-// Backend portun Thunder Client'ta 4000 görünüyordu, adresi ona göre ayarladık:
-const API_BASE_URL = 'http://localhost:4000/api';
+import { useAuthStore } from '../store/authStore';
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: 'http://localhost:4000/api', // Backend adresin
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request Interceptor: Her istek gönderildiğinde token varsa otomatik ekler
+// Request Interceptor: Her istekte Zustand Store'daki token'ı ekler
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
+    const token = useAuthStore.getState().token;
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Response Interceptor: 401 hatası (Yetkisiz/Süresi dolmuş token) alınca çıkış yaptırır
+// Response Interceptor: 401 Unauthenticated durumunda otomatik çıkış yaptırır
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      useAuthStore.getState().logout();
     }
     return Promise.reject(error);
   }

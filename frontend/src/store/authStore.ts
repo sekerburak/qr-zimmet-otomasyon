@@ -11,7 +11,6 @@ export interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
-  isAuthenticated: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
 }
@@ -21,27 +20,18 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
-      isAuthenticated: false,
 
       login: (user: User, token: string) => {
-        set({
-          user,
-          token,
-          isAuthenticated: true,
-        });
+        set({ user, token });
       },
 
       logout: () => {
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-        });
-        localStorage.removeItem('auth-storage'); // Persist hafızasını temizle
+        set({ user: null, token: null });
+        localStorage.removeItem('auth-storage');
       },
     }),
     {
-      name: 'auth-storage', // localStorage içerisindeki anahtar adı
+      name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
     }
   )

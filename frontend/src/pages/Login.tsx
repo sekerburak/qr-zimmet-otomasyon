@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/authService';
+import { api } from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,41 +18,30 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      console.log('Giriş isteği gönderiliyor:', { email, password });
+      // Backend'e giriş isteği atıyoruz
+      const response = await api.post('/auth/login', { email, password });
+      
+      // Backend'den gelen veri yapısına göre token ve user'ı yakalıyoruz
+      const token = response.data.token || response.data.data?.token;
+      const user = response.data.user || response.data.data?.user;
 
-      // authService üzerinden login isteği
-      const data = await authService.login({ email, password });
-      console.log('Giriş başarılı yanıtı:', data);
+      if (token && user) {
+        // Zustand store'u güncelliyoruz (Bu işlem otomatik olarak localStorage'a da yazıyor)
+        setAuth(user, token);
 
-      // Token veya user objesi dönüyorsa localStorage'a kaydedelim
-      if (data?.token) {
-        localStorage.setItem('token', data.token);
+        // Ana sayfaya güvenle yönlendiriyoruz
+        navigate('/', { replace: true });
+      } else {
+        setError('Sunucudan geçersiz veri formatı döndü.');
       }
-      if (data?.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
-      // Yönlendirmeyi navigate ile güvenli yapalım
-      navigate('/');
     } catch (err: any) {
-      console.error('Giriş hatası detayları:', err);
-
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        'Giriş yapılamadı. Sunucuya ulaşılamıyor veya bilgiler hatalı.';
-
-      setError(errorMessage);
+      console.error('Giriş hatası:', err);
+      setError(
+        err.response?.data?.message || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.'
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  // Test amaçlı doğrudan giriş yapma butonu (Backend kapalıysa veya takılırsa)
-  const handleBypassLogin = () => {
-    localStorage.setItem('token', 'demo-token');
-    localStorage.setItem('user', JSON.stringify({ email: 'yusuf@test.com', role: 'ADMIN' }));
-    navigate('/');
   };
 
   return (
@@ -65,7 +56,9 @@ export const Login: React.FC = () => {
         color: '#ffffff',
       }}
     >
-      <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#ffffff' }}>Giriş Yap</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>
+        Giriş Yap
+      </h2>
 
       {error && (
         <div
@@ -77,16 +70,15 @@ export const Login: React.FC = () => {
             borderRadius: '4px',
             marginBottom: '15px',
             fontSize: '14px',
-            wordBreak: 'break-word',
           }}
         >
-          <strong>Hata:</strong> {error}
+          {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', color: '#dddddd', fontSize: '14px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
             E-posta:
           </label>
           <input
@@ -108,7 +100,7 @@ export const Login: React.FC = () => {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', color: '#dddddd', fontSize: '14px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
             Şifre:
           </label>
           <input
@@ -141,31 +133,11 @@ export const Login: React.FC = () => {
             borderRadius: '4px',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontWeight: 'bold',
-            marginBottom: '10px',
           }}
         >
           {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
         </button>
       </form>
-
-      {/* Ekstra: Her ihtimale karşı acil geçiş butonu */}
-      <button
-        type="button"
-        onClick={handleBypassLogin}
-        style={{
-          width: '100%',
-          padding: '8px',
-          backgroundColor: 'transparent',
-          color: '#888',
-          border: '1px dashed #555',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '12px',
-          marginTop: '10px',
-        }}
-      >
-        ⚡ Direkt Panele Geç (Hızlı Test)
-      </button>
     </div>
   );
 };
