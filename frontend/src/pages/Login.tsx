@@ -1,120 +1,171 @@
 import React, { useState } from 'react';
-import { QrCode, LogIn, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { mockUsers } from '../data/mockData';
+import { authService } from '../services/authService';
 
-const Login = () => {
-  const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login);
-
+export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
+    setError(null);
+    setLoading(true);
 
-    setTimeout(() => {
-      const foundUser = mockUsers.find(u => u.email === email && password === '123456');
+    try {
+      console.log('Giriş isteği gönderiliyor:', { email, password });
 
-      if (foundUser) {
-        // MockUser'dan User'a dönüştürüyoruz (department hariç)
-        const { department, ...userWithoutDept } = foundUser;
-        login(userWithoutDept, `mock-jwt-token-${foundUser.id}`);
-        navigate('/');
-      } else {
-        setError('E-posta adresi veya şifre hatalı. Lütfen tekrar deneyin.');
-        setIsLoading(false);
+      // authService üzerinden login isteği
+      const data = await authService.login({ email, password });
+      console.log('Giriş başarılı yanıtı:', data);
+
+      // Token veya user objesi dönüyorsa localStorage'a kaydedelim
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
       }
-    }, 1200);
+      if (data?.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      // Yönlendirmeyi navigate ile güvenli yapalım
+      navigate('/');
+    } catch (err: any) {
+      console.error('Giriş hatası detayları:', err);
+
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        'Giriş yapılamadı. Sunucuya ulaşılamıyor veya bilgiler hatalı.';
+
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Test amaçlı doğrudan giriş yapma butonu (Backend kapalıysa veya takılırsa)
+  const handleBypassLogin = () => {
+    localStorage.setItem('token', 'demo-token');
+    localStorage.setItem('user', JSON.stringify({ email: 'yusuf@test.com', role: 'ADMIN' }));
+    navigate('/');
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 space-y-8">
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-            <QrCode className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800">Sisteme Giriş</h1>
-          <p className="text-slate-500">Stok & Demirbaş Otomasyonu</p>
+    <div
+      style={{
+        maxWidth: '400px',
+        margin: '100px auto',
+        padding: '30px',
+        border: '1px solid #444',
+        borderRadius: '8px',
+        backgroundColor: '#1e1e1e',
+        color: '#ffffff',
+      }}
+    >
+      <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#ffffff' }}>Giriş Yap</h2>
+
+      {error && (
+        <div
+          style={{
+            color: '#ff6b6b',
+            backgroundColor: '#3d1a1a',
+            border: '1px solid #ff6b6b',
+            padding: '10px',
+            borderRadius: '4px',
+            marginBottom: '15px',
+            fontSize: '14px',
+            wordBreak: 'break-word',
+          }}
+        >
+          <strong>Hata:</strong> {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', color: '#dddddd', fontSize: '14px' }}>
+            E-posta:
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="yusuf@test.com"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '4px',
+              border: '1px solid #555',
+              backgroundColor: '#2d2d2d',
+              color: '#ffffff',
+              boxSizing: 'border-box',
+            }}
+          />
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-start gap-3 text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            <p>{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700 px-1">E-Posta</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              placeholder="metehan@qrzimmet.com"
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700 px-1">Şifre</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              placeholder="123456"
-              required
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="flex items-center justify-between px-1">
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" disabled={isLoading} />
-              <span>Beni Hatırla</span>
-            </label>
-            <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">Şifremi Unuttum</a>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-medium py-3.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-70 disabled:pointer-events-none"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <LogIn className="w-5 h-5" />
-            )}
-            {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
-          </button>
-        </form>
-
-        <div className="text-center pt-4 border-t border-slate-100">
-          <p className="text-xs text-slate-400 mb-2">Test Hesapları (Şifre: 123456)</p>
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {mockUsers.slice(0, 6).map(u => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => { setEmail(u.email); setPassword('123456'); }}
-                className="px-2 py-1 bg-slate-100 hover:bg-blue-100 rounded text-[10px] text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
-              >
-                {u.name.split(' ')[0]}
-              </button>
-            ))}
-          </div>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', color: '#dddddd', fontSize: '14px' }}>
+            Şifre:
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="••••••••"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '4px',
+              border: '1px solid #555',
+              backgroundColor: '#2d2d2d',
+              color: '#ffffff',
+              boxSizing: 'border-box',
+            }}
+          />
         </div>
-      </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: loading ? '#555' : '#007bff',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 'bold',
+            marginBottom: '10px',
+          }}
+        >
+          {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
+        </button>
+      </form>
+
+      {/* Ekstra: Her ihtimale karşı acil geçiş butonu */}
+      <button
+        type="button"
+        onClick={handleBypassLogin}
+        style={{
+          width: '100%',
+          padding: '8px',
+          backgroundColor: 'transparent',
+          color: '#888',
+          border: '1px dashed #555',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          marginTop: '10px',
+        }}
+      >
+        ⚡ Direkt Panele Geç (Hızlı Test)
+      </button>
     </div>
   );
 };

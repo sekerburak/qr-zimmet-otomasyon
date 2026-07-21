@@ -27,4 +27,20 @@ router.post(
 //  istenirse authMiddleware eklenerek kapali sisteme de cevrilebilir)
 router.get('/qr/:uuid', assetController.getAssetByQrUuid);
 
+// PUT /api/assets/:id -> Demirbas güncelleme (Sadece ADMIN ve DEPO rolleri güncelleyebilir)
+router.put(
+  '/:id',
+  authMiddleware,
+  roleMiddleware(['ADMIN', 'DEPO']),
+  assetController.updateAsset
+);
+
+// DELETE /api/assets/:id -> Demirbas silme (Sadece ADMIN ve DEPO rolleri silebilir)
+router.delete(
+  '/:id',
+  authMiddleware,
+  roleMiddleware(['ADMIN', 'DEPO']),
+  assetController.deleteAsset
+);
+
 export default router;

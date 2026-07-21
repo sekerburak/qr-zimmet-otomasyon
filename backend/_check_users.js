@@ -1,13 +1,32 @@
-const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcrypt");
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+
 const prisma = new PrismaClient();
 
 async function main() {
-  const hash = await bcrypt.hash("admin123", 10);
-  await prisma.user.update({ where: { email: "yusuf@test.com" }, data: { passwordHash: hash } });
-  await prisma.user.update({ where: { email: "admin@test.com" }, data: { role: "ADMIN" } });
-  const users = await prisma.user.findMany({ select: { id: true, email: true, role: true } });
-  console.log(JSON.stringify(users));
+  const hash = await bcrypt.hash('admin123', 10);
+
+  const user = await prisma.user.upsert({
+    where: { email: 'yusuf@test.com' },
+    update: {
+      passwordHash: hash,
+    },
+    create: {
+      email: 'yusuf@test.com',
+      passwordHash: hash,
+      name: 'Yusuf Admin',
+      role: 'ADMIN',
+    },
+  });
+
+  console.log('✅ KULLANICI BAŞARIYLA EKLENDİ / GÜNCELLENDİ:');
+  console.log('Email:', user.email);
 }
 
-main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
+main()
+  .catch((e) => {
+    console.error('❌ HATA:', e);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

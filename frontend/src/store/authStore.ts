@@ -1,17 +1,17 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
-  role: 'admin' | 'personel' | 'depo' | 'zimmet_sorumlusu';
-  initials: string;
+  role: 'ADMIN' | 'PERSONEL';
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
+  isAuthenticated: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
 }
@@ -21,11 +21,28 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
-      login: (user, token) => set({ user, token }),
-      logout: () => set({ user: null, token: null }),
+      isAuthenticated: false,
+
+      login: (user: User, token: string) => {
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+        });
+      },
+
+      logout: () => {
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+        });
+        localStorage.removeItem('auth-storage'); // Persist hafızasını temizle
+      },
     }),
     {
-      name: 'qr-zimmet-auth', // localStorage key name
+      name: 'auth-storage', // localStorage içerisindeki anahtar adı
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );
